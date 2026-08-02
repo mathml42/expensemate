@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
-import { apiClient } from "../api/client";
 import type { User } from "../features/auth/types";
+import { createUser, listUsers, sendAdminPasswordReset, updateUser } from "../lib/firebase/users";
 
 type CreateUserPayload = {
   email: string;
@@ -20,7 +20,7 @@ const initialForm: CreateUserPayload = {
 export function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [form, setForm] = useState<CreateUserPayload>(initialForm);
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ email: "", full_name: "", role: "user", is_active: true });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,8 +30,7 @@ export function AdminUsersPage() {
   async function fetchUsers() {
     try {
       setIsLoading(true);
-      const response = await apiClient.get<User[]>("/users/");
-      setUsers(response.data);
+      setUsers(await listUsers());
     } catch {
       setError("Failed to load users.");
     } finally {
@@ -54,8 +53,8 @@ export function AdminUsersPage() {
         ...form,
         full_name: form.full_name.trim() || null,
       };
-      const response = await apiClient.post<User>("/users/", payload);
-      setUsers((currentUsers) => [...currentUsers, response.data]);
+      const createdUser = await createUser(payload);
+      setUsers((currentUsers) => [...currentUsers, createdUser]);
       setForm(initialForm);
       setSuccess("User created successfully.");
     } catch {
@@ -77,24 +76,37 @@ export function AdminUsersPage() {
 
   async function saveEdit() {
     if (!editingUserId) return;
-    const response = await apiClient.patch<User>(`/users/${editingUserId}`, {
-      ...editForm,
-      full_name: editForm.full_name.trim() || null,
-    });
-    setUsers((current) => current.map((user) => (user.id === editingUserId ? response.data : user)));
-    setEditingUserId(null);
+
+    try {
+      const updatedUser = await updateUser(editingUserId, {
+        ...editForm,
+        full_name: editForm.full_name.trim() || null,
+      });
+      setUsers((current) => current.map((user) => (user.id === editingUserId ? updatedUser : user)));
+      setEditingUserId(null);
+    } catch (error) {
+      console.error("Failed to save user:", error);
+      setError("Failed to save user.");
+    }
   }
 
   async function toggleActive(user: User) {
-    const response = await apiClient.patch<User>(`/users/${user.id}`, { is_active: !user.is_active });
-    setUsers((current) => current.map((item) => (item.id === user.id ? response.data : item)));
+    try {
+      const updatedUser = await updateUser(user.id, { is_active: !user.is_active });
+      console.log("updatedUser", updatedUser);
+      setUsers((current) => current.map((item) => (item.id === user.id ? updatedUser : item)));
+      if (editingUserId === user.id) {
+        setEditForm((current) => ({ ...current, is_active: updatedUser.is_active }));
+      }
+    } catch (error) {
+      console.error("Failed to toggle user active status:", error);
+      setError("Failed to update user status.");
+    }
   }
 
   async function resetPassword(user: User) {
-    const newPassword = window.prompt(`New password for ${user.email}:`);
-    if (!newPassword) return;
-    await apiClient.post(`/users/${user.id}/reset-password`, { new_password: newPassword });
-    setSuccess("Password reset successfully.");
+    await sendAdminPasswordReset(user.email);
+    setSuccess(`Password reset email sent to ${user.email}.`);
   }
 
   return (
@@ -103,46 +115,46 @@ export function AdminUsersPage() {
         <h1 className="text-3xl font-semibold tracking-normal">Users</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-5 rounded-lg border bg-white p-5 shadow-sm md:grid-cols-2">
+      <form onSubmit={handleSubmit} className="grid gap-5 rounded-lg border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:grid-cols-2">
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Email</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
           <input
             type="email"
             value={form.email}
             onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
             required
-            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Full name</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Full name</span>
           <input
             type="text"
             value={form.full_name}
             onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
-            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Password</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
           <input
             type="password"
             value={form.password}
             onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
             required
             minLength={8}
-            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Role</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Role</span>
           <select
             value={form.role}
             onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as CreateUserPayload["role"] }))}
-            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           >
             <option value="user">User</option>
             <option value="admin">Admin</option>
@@ -162,9 +174,9 @@ export function AdminUsersPage() {
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-100 text-slate-600">
+      <div className="overflow-x-auto rounded-lg border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Email</th>
@@ -228,7 +240,7 @@ export function AdminUsersPage() {
                           <button onClick={() => void toggleActive(user)} className="rounded-md border px-3 py-1.5 text-xs font-medium">
                             {user.is_active ? "Deactivate" : "Activate"}
                           </button>
-                          <button onClick={() => void resetPassword(user)} className="rounded-md border px-3 py-1.5 text-xs font-medium">Reset Password</button>
+                          <button onClick={() => void resetPassword(user)} className="rounded-md border px-3 py-1.5 text-xs font-medium">Send Reset Email</button>
                         </>
                       )}
                     </td>

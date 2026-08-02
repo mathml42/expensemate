@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { apiClient } from "../api/client";
 import { User } from "../features/auth/types";
 import { useAuth } from "../features/auth/AuthContext";
+import {
+  approveTransaction,
+  listPendingApprovals,
+  rejectTransaction,
+} from "../lib/firebase/transactions";
 
 type Transaction = {
-  id: number;
+  id: string;
   amount: number;
   note: string;
   date: string;
@@ -18,13 +22,13 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-function ApprovalCard({ transaction, onUpdate }: { transaction: Transaction, onUpdate: () => void }) {
+function ApprovalCard({ transaction, onUpdate, currentUser }: { transaction: Transaction, onUpdate: () => void, currentUser: User }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleApprove() {
     setIsSubmitting(true);
     try {
-      await apiClient.post(`/transactions/${transaction.id}/approve`);
+      await approveTransaction(transaction.id, currentUser);
       onUpdate();
     } catch (error) {
       alert("Failed to approve transaction.");
@@ -39,7 +43,7 @@ function ApprovalCard({ transaction, onUpdate }: { transaction: Transaction, onU
 
     setIsSubmitting(true);
     try {
-      await apiClient.post(`/transactions/${transaction.id}/reject`, { reason });
+      await rejectTransaction(transaction.id, reason, currentUser);
       onUpdate();
     } catch (error) {
       alert("Failed to reject transaction.");
@@ -49,8 +53,8 @@ function ApprovalCard({ transaction, onUpdate }: { transaction: Transaction, onU
   }
 
   return (
-    <div className="rounded-lg border bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
+    <div className="rounded-lg border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p>
             <span className="font-semibold">{transaction.created_by.full_name ?? transaction.created_by.email}</span> wants your approval for a transaction.
@@ -64,14 +68,14 @@ function ApprovalCard({ transaction, onUpdate }: { transaction: Transaction, onU
         <button
           onClick={handleReject}
           disabled={isSubmitting}
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
         >
           Reject
         </button>
         <button
           onClick={handleApprove}
           disabled={isSubmitting}
-          className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 dark:bg-green-500 dark:hover:bg-green-600"
         >
           {isSubmitting ? "Processing..." : "Approve"}
         </button>
@@ -85,14 +89,14 @@ export function PendingApprovalPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { refreshUser } = useAuth();
+  const { refreshUser, user } = useAuth();
 
 
   const fetchPendingTransactions = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get<Transaction[]>("/transactions/pending");
-      setTransactions(response.data);
+      if (!user) return;
+      setTransactions(await listPendingApprovals(user.id));
     } catch (err) {
       setError("Failed to fetch pending approvals.");
     } finally {
@@ -102,7 +106,7 @@ export function PendingApprovalPage() {
 
   useEffect(() => {
     void fetchPendingTransactions();
-  }, []);
+  }, [user]);
 
   const handleUpdate = () => {
     void fetchPendingTransactions();
@@ -122,12 +126,14 @@ export function PendingApprovalPage() {
       <h1 className="text-3xl font-semibold tracking-normal">Pending Approvals</h1>
       {transactions.length > 0 ? (
         <div className="space-y-4">
-          {transactions.map((tx) => (
-            <ApprovalCard key={tx.id} transaction={tx} onUpdate={handleUpdate} />
-          ))}
+          {user
+            ? transactions.map((tx) => (
+                <ApprovalCard key={tx.id} transaction={tx} onUpdate={handleUpdate} currentUser={user} />
+              ))
+            : null}
         </div>
       ) : (
-        <div className="rounded-md border bg-white p-8 text-center text-slate-500 shadow-sm">
+        <div className="rounded-md border bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
           <p>You have no transactions awaiting your approval.</p>
         </div>
       )}
