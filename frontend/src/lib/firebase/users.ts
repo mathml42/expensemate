@@ -34,7 +34,7 @@ function toUserRead(id: string, data: Omit<UserRead, "id">): UserRead {
     email: data.email,
     full_name: data.full_name ?? null,
     role: data.role ?? "user",
-    is_active: data.is_active ?? true,
+    is_active: data.is_active ?? false,
   };
 }
 

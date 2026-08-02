@@ -76,17 +76,32 @@ export function AdminUsersPage() {
 
   async function saveEdit() {
     if (!editingUserId) return;
-    const updatedUser = await updateUser(editingUserId, {
-      ...editForm,
-      full_name: editForm.full_name.trim() || null,
-    });
-    setUsers((current) => current.map((user) => (user.id === editingUserId ? updatedUser : user)));
-    setEditingUserId(null);
+
+    try {
+      const updatedUser = await updateUser(editingUserId, {
+        ...editForm,
+        full_name: editForm.full_name.trim() || null,
+      });
+      setUsers((current) => current.map((user) => (user.id === editingUserId ? updatedUser : user)));
+      setEditingUserId(null);
+    } catch (error) {
+      console.error("Failed to save user:", error);
+      setError("Failed to save user.");
+    }
   }
 
   async function toggleActive(user: User) {
-    const updatedUser = await updateUser(user.id, { is_active: !user.is_active });
-    setUsers((current) => current.map((item) => (item.id === user.id ? updatedUser : item)));
+    try {
+      const updatedUser = await updateUser(user.id, { is_active: !user.is_active });
+      console.log("updatedUser", updatedUser);
+      setUsers((current) => current.map((item) => (item.id === user.id ? updatedUser : item)));
+      if (editingUserId === user.id) {
+        setEditForm((current) => ({ ...current, is_active: updatedUser.is_active }));
+      }
+    } catch (error) {
+      console.error("Failed to toggle user active status:", error);
+      setError("Failed to update user status.");
+    }
   }
 
   async function resetPassword(user: User) {
