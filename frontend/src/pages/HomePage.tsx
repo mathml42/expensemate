@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+
 import { Modal } from "../components/Modal";
 import { useAuth } from "../features/auth/AuthContext";
 import { User } from "../features/auth/types";
 import { AddTransactionForm } from "../features/transactions/AddTransactionForm";
 import { getDashboardData } from "../lib/firebase/dashboard";
 
-// ... (rest of the types and components remain the same)
 type UserBalance = {
   user: User;
   balance: number;
@@ -68,33 +68,38 @@ function UserBalanceRow({ user, balance }: { user: User; balance: number }) {
 
 export function HomePage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
 
   const fetchData = useCallback(async () => {
+    if (!user) return;
+
+    setIsDataLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      if (!user) return;
       setDashboardData(await getDashboardData(user));
     } catch (err) {
+      if (err instanceof Error) {
+        console.error(err.message);
+      }
       setError("Failed to fetch dashboard data.");
     } finally {
-      setIsLoading(false);
+      setIsDataLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
-  
+
   const handleTransactionSuccess = () => {
     setIsModalOpen(false);
     void fetchData();
   };
 
-  if (isLoading && !dashboardData) { // Show initial loading state only on first load
+  if (isAuthLoading || (isDataLoading && !dashboardData)) {
     return <div className="px-6 py-8">Loading dashboard...</div>;
   }
 

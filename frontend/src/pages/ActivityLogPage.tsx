@@ -1,28 +1,52 @@
 import { useEffect, useState } from "react";
-import type { User } from "../features/auth/types";
-import { listAuditLogs } from "../lib/firebase/auditLogs";
+import { getDocs, query, where, orderBy, limit } from "firebase/firestore";
 
-type AuditLog = {
-  id: string;
-  action: string;
-  reason: string | null;
-  details: Record<string, unknown> | null;
-  timestamp: Date | null;
-  performed_by: User;
-};
+import { useAuth } from "../features/auth/AuthContext";
+import type { User } from "../features/auth/types";
+import { auditLogsCollection } from "../lib/firebase/collections";
+import type { AuditLogRead, AuditLogDocument } from "../types/domain";
 
 export function ActivityLogPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [logs, setLogs] = useState<AuditLogRead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     async function fetchLogs() {
+      if (!user) {
+        return;
+      }
       setIsLoading(true);
-      setLogs(await listAuditLogs());
-      setIsLoading(false);
+      try {
+        const snapshot = await getDocs(
+          query(
+            auditLogsCollection,
+            where("performed_by_id", "==", user.id),
+            orderBy("timestamp", "desc"),
+            limit(100),
+          ),
+        );
+
+        const fetchedLogs: AuditLogRead[] = snapshot.docs.map((log) => {
+          const data = log.data() as AuditLogDocument;
+          return {
+            id: log.id,
+            action: data.action,
+            reason: data.reason,
+            details: data.details,
+            timestamp: data.timestamp?.toDate() ?? null,
+            performed_by: user, // Use user from context
+          };
+        });
+        setLogs(fetchedLogs);
+      } catch (error) {
+        console.error("Error fetching activity logs:", error);
+      } finally {
+        setIsLoading(false);
+      }
     }
     void fetchLogs();
-  }, []);
+  }, [user]);
 
   return (
     <div className="space-y-6">

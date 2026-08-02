@@ -1,29 +1,19 @@
-import { getCountFromServer, getDocs, query, where } from "firebase/firestore";
+import { getCountFromServer, getDocs, query, where, or, orderBy, limit } from "firebase/firestore";
 
 import { auditLogsCollection, transactionsCollection } from "./collections";
 import { getUserById } from "./users";
 import type { AuditLogRead, DashboardData, TransactionDocument, UserRead } from "../../types/domain";
 
 async function readRecentActivityForUser(userId: string): Promise<AuditLogRead[]> {
-  const snapshot = await getDocs(auditLogsCollection);
-  const relevant = snapshot.docs
-    .filter((log) => {
-      const details = log.data().details;
-      return (
-        log.data().performed_by_id === userId ||
-        details?.paid_by_id === userId ||
-        details?.paid_for_id === userId
-      );
-    })
-    .sort((left, right) => {
-      const leftTime = left.data().timestamp?.toMillis() ?? 0;
-      const rightTime = right.data().timestamp?.toMillis() ?? 0;
-      return rightTime - leftTime;
-    })
-    .slice(0, 5);
+  const snapshot = await getDocs(query(
+    auditLogsCollection,
+    where("performed_by_id", "==", userId),
+    orderBy("timestamp", "desc"),
+    limit(5),
+  ));
 
   return Promise.all(
-    relevant.map(async (log) => {
+    snapshot.docs.map(async (log) => {
       const data = log.data();
       const performedBy = await getUserById(data.performed_by_id);
       if (!performedBy) {
@@ -43,27 +33,12 @@ async function readRecentActivityForUser(userId: string): Promise<AuditLogRead[]
 }
 
 export async function getDashboardData(user: UserRead): Promise<DashboardData> {
-  const [paidBySnapshot, paidForSnapshot] = await Promise.all([
-    getDocs(
-      query(
-        transactionsCollection,
-        where("paid_by_id", "==", user.id),
-        where("status", "==", "approved"),
-        where("is_deleted", "==", false),
-      ),
-    ),
-    getDocs(
-      query(
-        transactionsCollection,
-        where("paid_for_id", "==", user.id),
-        where("status", "==", "approved"),
-        where("is_deleted", "==", false),
-      ),
-    ),
-  ]);
+  const transactionsSnapshot = await getDocs(
+    query(transactionsCollection, or(where("paid_by_id", "==", user.id), where("paid_for_id", "==", user.id))),
+  );
 
   const transactions = new Map<string, TransactionDocument>();
-  for (const item of [...paidBySnapshot.docs, ...paidForSnapshot.docs]) {
+  for (const item of transactionsSnapshot.docs) {
     transactions.set(item.id, item.data());
   }
 

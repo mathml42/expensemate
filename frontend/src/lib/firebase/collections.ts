@@ -30,7 +30,7 @@ export const transactionsCollection = collection(db, "transactions").withConvert
   converter<TransactionDocument>(),
 ) as CollectionReference<TransactionDocument>;
 
-export const auditLogsCollection = collection(db, "audit_logs").withConverter(
+export const auditLogsCollection = collection(db, "auditLogs").withConverter(
   converter<AuditLogDocument>(),
 ) as CollectionReference<AuditLogDocument>;
 
