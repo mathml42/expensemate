@@ -23,7 +23,14 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
     async function fetchUsers() {
       try {
         const allUsers = await listUsers();
-        setUsers(allUsers.filter((user) => user.id !== currentUser?.id && user.is_active));
+        setUsers(
+          allUsers.filter(
+            (user) =>
+              user.id !== currentUser?.id &&
+              user.is_active &&
+              user.role !== "admin"
+          )
+        );
       } catch {
         setError("Failed to load users.");
       }
