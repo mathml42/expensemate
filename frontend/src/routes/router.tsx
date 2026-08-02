@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createHashRouter } from "react-router-dom";
 
 import { App } from "../App";
 import { AdminRoute } from "../features/auth/AdminRoute";
@@ -13,7 +13,7 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { PendingApprovalPage } from "../pages/PendingApprovalPage";
 import { PersonDetailsPage } from "../pages/PersonDetailsPage";
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: "/",
     element: <App />,

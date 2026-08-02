@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { FirebaseError } from "firebase/app";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/AuthContext";
@@ -8,6 +9,41 @@ type LocationState = {
     pathname?: string;
   };
 };
+
+function getLoginErrorMessage(error: unknown) {
+  if (error instanceof FirebaseError) {
+    switch (error.code) {
+      case "auth/invalid-credential":
+      case "auth/user-not-found":
+      case "auth/wrong-password":
+        return "Firebase rejected those credentials. Check the email and password in Firebase Authentication.";
+      case "auth/operation-not-allowed":
+        return "Email/password sign-in is not enabled in Firebase Authentication.";
+      case "auth/network-request-failed":
+        return "Could not reach Firebase. Check your network connection.";
+      case "auth/api-key-not-valid":
+      case "auth/invalid-api-key":
+        return "Firebase API key is invalid. Check frontend/.env.";
+      default:
+        return `Firebase login failed: ${error.code}`;
+    }
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "unavailable"
+  ) {
+    return "Firebase signed in, but Firestore is unavailable. Check internet, Firestore setup, and Firebase project settings.";
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Unable to sign in.";
+}
 
 export function LoginPage() {
   const { isAuthenticated, login } = useAuth();
@@ -32,37 +68,37 @@ export function LoginPage() {
     try {
       await login({ email, password });
       navigate(from, { replace: true });
-    } catch {
-      setError("Invalid email or password.");
+    } catch (error) {
+      setError(getLoginErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <section className="mx-auto max-w-md">
-      <h1 className="text-3xl font-semibold tracking-normal">Sign in</h1>
+    <section className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <h1 className="text-3xl font-semibold tracking-normal text-slate-950 dark:text-slate-100">Sign in</h1>
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Email</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
             autoComplete="email"
-            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
         </label>
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Password</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
           <input
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
             autoComplete="current-password"
-            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
         </label>
         {error ? <p className="text-sm text-red-700">{error}</p> : null}

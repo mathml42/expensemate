@@ -1,12 +1,15 @@
 import { FormEvent, useEffect, useState } from "react";
-import { apiClient } from "../../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { User } from "../auth/types";
+import { createTransaction } from "../../lib/firebase/transactions";
+import { listUsers } from "../../lib/firebase/users";
 
 type AddTransactionFormProps = {
   onSuccess: () => void;
 };
 
 export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [amount, setAmount] = useState("");
@@ -19,14 +22,14 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const response = await apiClient.get<User[]>("/users/");
-        setUsers(response.data);
+        const allUsers = await listUsers();
+        setUsers(allUsers.filter((user) => user.id !== currentUser?.id && user.is_active));
       } catch {
         setError("Failed to load users.");
       }
     }
     void fetchUsers();
-  }, []);
+  }, [currentUser?.id]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,16 +37,17 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
     setIsSubmitting(true);
 
     try {
-      await apiClient.post("/transactions/", {
-        paid_for_id: parseInt(selectedUserId, 10),
+      if (!currentUser) throw new Error("You must be signed in.");
+      await createTransaction({
+        paid_for_id: selectedUserId,
         amount: parseFloat(amount),
         note,
         date,
         i_paid: iPaid,
-      });
+      }, currentUser);
       onSuccess();
-    } catch (err: any) {
-      setError(err.response?.data?.detail ?? "Failed to create transaction.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create transaction.");
     } finally {
       setIsSubmitting(false);
     }
@@ -52,7 +56,7 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="user" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="user" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
           User
         </label>
         <select
@@ -60,7 +64,7 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
           value={selectedUserId}
           onChange={(e) => setSelectedUserId(e.target.value)}
           required
-          className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
         >
           <option value="" disabled>
             Select a user
@@ -74,7 +78,7 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
       </div>
 
       <div>
-        <label htmlFor="amount" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="amount" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
           Amount
         </label>
         <input
@@ -85,42 +89,42 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
           required
           step="0.01"
           min="0.01"
-          className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
         />
       </div>
 
-      <fieldset className="flex space-x-4">
+      <fieldset className="flex flex-col gap-3 sm:flex-row sm:items-center sm:space-x-4">
         <legend className="sr-only">Transaction direction</legend>
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           <input
             id="i-paid"
             name="direction"
             type="radio"
             checked={iPaid}
             onChange={() => setIPaid(true)}
-            className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-500"
           />
-          <label htmlFor="i-paid" className="ml-2 block text-sm text-slate-900">
+          <label htmlFor="i-paid" className="block text-sm text-slate-900 dark:text-slate-100">
             I paid for them
           </label>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           <input
             id="they-paid"
             name="direction"
             type="radio"
             checked={!iPaid}
             onChange={() => setIPaid(false)}
-            className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-500"
           />
-          <label htmlFor="they-paid" className="ml-2 block text-sm text-slate-900">
+          <label htmlFor="they-paid" className="block text-sm text-slate-900 dark:text-slate-100">
             They paid for me
           </label>
         </div>
       </fieldset>
 
       <div>
-        <label htmlFor="note" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="note" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
           Note
         </label>
         <textarea
@@ -129,12 +133,12 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
           onChange={(e) => setNote(e.target.value)}
           required
           rows={3}
-          className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
         />
       </div>
 
       <div>
-        <label htmlFor="date" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="date" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
           Date
         </label>
         <input
@@ -143,7 +147,7 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
           value={date}
           onChange={(e) => setDate(e.target.value)}
           required
-          className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
         />
       </div>
 

@@ -1,9 +1,15 @@
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 
-import { apiClient } from "../../api/client";
-import { clearStoredToken, getStoredToken, storeToken } from "./tokenStorage";
-import type { LoginCredentials, TokenResponse, User } from "./types";
+import { auth } from "../../lib/firebase/app";
+import {
+  getCurrentUser,
+  getUserById,
+  login as firebaseLogin,
+  logout as firebaseLogout,
+} from "../../lib/firebase/users";
+import type { LoginCredentials, User } from "./types";
 
 type AuthContextValue = {
   user: User | null;
@@ -21,18 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    const token = getStoredToken();
-    if (!token) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const response = await apiClient.get<User>("/auth/me");
-      setUser(response.data);
+      setUser(await getCurrentUser());
     } catch {
-      clearStoredToken();
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -40,20 +37,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refreshUser();
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const profile = await getUserById(firebaseUser.uid);
+        if (!profile || !profile.is_active) {
+          await firebaseLogout();
+          setUser(null);
+          return;
+        }
+        setUser(profile);
+      } catch {
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    });
+
+    return unsubscribe;
   }, [refreshUser]);
 
   const login = useCallback(
     async (credentials: LoginCredentials) => {
-      const response = await apiClient.post<TokenResponse>("/auth/login", credentials);
-      storeToken(response.data.access_token);
-      await refreshUser();
+      setUser(await firebaseLogin(credentials.email, credentials.password));
     },
-    [refreshUser],
+    [],
   );
 
-  const logout = useCallback(() => {
-    clearStoredToken();
+  const logout = useCallback(async () => {
+    await firebaseLogout();
     setUser(null);
   }, []);
 

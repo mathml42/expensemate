@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 
-import { apiClient } from "../api/client";
+import { changeCurrentUserPassword } from "../lib/firebase/users";
 
 export function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -16,10 +16,7 @@ export function ChangePasswordPage() {
     setIsSubmitting(true);
 
     try {
-      await apiClient.post("/auth/change-password", {
-        current_password: currentPassword,
-        new_password: newPassword,
-      });
+      await changeCurrentUserPassword(currentPassword, newPassword);
       setCurrentPassword("");
       setNewPassword("");
       setMessage("Password changed successfully.");
@@ -31,22 +28,22 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <section className="mx-auto max-w-md">
-      <h1 className="text-3xl font-semibold tracking-normal">Change Password</h1>
+    <section className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <h1 className="text-3xl font-semibold tracking-normal text-slate-950 dark:text-slate-100">Change Password</h1>
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Current password</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Current password</span>
           <input
             type="password"
             value={currentPassword}
             onChange={(event) => setCurrentPassword(event.target.value)}
             required
             autoComplete="current-password"
-            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
         </label>
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">New password</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">New password</span>
           <input
             type="password"
             value={newPassword}
@@ -54,7 +51,7 @@ export function ChangePasswordPage() {
             required
             minLength={8}
             autoComplete="new-password"
-            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
         </label>
         {message ? <p className="text-sm text-green-700">{message}</p> : null}
