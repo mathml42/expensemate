@@ -3,6 +3,8 @@ import type { PropsWithChildren } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/AuthContext";
+import smallLogo from "../assets/EM_logo_small.png";
+import fullLogo from "../assets/EM_logo_full_name.png";
 
 const navLinkClasses =
   "block rounded-md px-3 py-2 font-medium text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white";
@@ -163,12 +165,12 @@ export function AppLayout({ children }: PropsWithChildren) {
           <div className="flex w-full items-center justify-between gap-3 sm:w-auto">
             <NavLink to="/" className="flex items-center justify-center gap-2 text-lg font-semibold">
               <img
-                src="/src/assets/EM_logo_small.png"
+                src={smallLogo}
                 alt="ExpenseMate Logo"
                 className="block h-8 sm:hidden"
               />
               <img
-                src="/src/assets/EM_logo_full_name.png"
+                src={fullLogo}
                 alt="ExpenseMate Full Logo"
                 className="hidden h-8 sm:block"
               />
