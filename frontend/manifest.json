@@ -1,7 +1,9 @@
 {
   "name": "ExpenseMate",
   "short_name": "ExpenseMate",
-  "start_url": "./index.html",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
