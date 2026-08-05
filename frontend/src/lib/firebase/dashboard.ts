@@ -1,4 +1,4 @@
-import { getCountFromServer, getDocs, query, where, or, orderBy, limit } from "firebase/firestore";
+import { getCountFromServer, getDocs, query, where, or, orderBy, limit, and } from "firebase/firestore";
 
 import { auditLogsCollection, transactionsCollection } from "./collections";
 import { getUserById } from "./users";
@@ -34,7 +34,13 @@ async function readRecentActivityForUser(userId: string): Promise<AuditLogRead[]
 
 export async function getDashboardData(user: UserRead): Promise<DashboardData> {
   const transactionsSnapshot = await getDocs(
-    query(transactionsCollection, or(where("paid_by_id", "==", user.id), where("paid_for_id", "==", user.id))),
+    query(
+      transactionsCollection,
+      and(
+        or(where("paid_by_id", "==", user.id), where("paid_for_id", "==", user.id)),
+        where("status", "==", "approved"),
+      ),
+    ),
   );
 
   const transactions = new Map<string, TransactionDocument>();
