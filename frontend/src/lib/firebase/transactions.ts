@@ -1,9 +1,11 @@
 import {
   addDoc,
+  and,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
+  or,
   orderBy,
   query,
   serverTimestamp,
@@ -196,9 +198,12 @@ export async function listPendingApprovals(userId: string): Promise<TransactionR
   const snapshot = await getDocs(
     query(
       transactionsCollection,
-      where("paid_for_id", "==", userId),
-      where("status", "==", "pending"),
-      where("is_deleted", "==", false),
+      and(
+        or(where("paid_by_id", "==", userId), where("paid_for_id", "==", userId)),
+        where("created_by_id", "!=", userId),
+        where("status", "==", "pending"),
+        where("is_deleted", "==", false),
+      ),
     ),
   );
   const transactions = await Promise.all(

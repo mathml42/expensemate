@@ -82,9 +82,12 @@ export async function getDashboardData(user: UserRead): Promise<DashboardData> {
     getCountFromServer(
       query(
         transactionsCollection,
-        where("status", "==", "pending"),
-        where("paid_for_id", "==", user.id),
-        where("is_deleted", "==", false),
+        and(
+          or(where("paid_by_id", "==", user.id), where("paid_for_id", "==", user.id)),
+          where("created_by_id", "!=", user.id),
+          where("status", "==", "pending"),
+          where("is_deleted", "==", false),
+        ),
       ),
     ).then((count) => count.data().count),
   ]);
