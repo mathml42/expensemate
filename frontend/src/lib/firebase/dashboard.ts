@@ -32,6 +32,21 @@ async function readRecentActivityForUser(userId: string): Promise<AuditLogRead[]
   );
 }
 
+export async function getPendingApprovalCount(userId: string): Promise<number> {
+  const snapshot = await getCountFromServer(
+    query(
+      transactionsCollection,
+      and(
+        or(where("paid_by_id", "==", userId), where("paid_for_id", "==", userId)),
+        where("created_by_id", "!=", userId),
+        where("status", "==", "pending"),
+        where("is_deleted", "==", false),
+      ),
+    ),
+  );
+  return snapshot.data().count;
+}
+
 export async function getDashboardData(user: UserRead): Promise<DashboardData> {
   const transactionsSnapshot = await getDocs(
     query(
@@ -79,17 +94,7 @@ export async function getDashboardData(user: UserRead): Promise<DashboardData> {
       }),
     ),
     readRecentActivityForUser(user.id),
-    getCountFromServer(
-      query(
-        transactionsCollection,
-        and(
-          or(where("paid_by_id", "==", user.id), where("paid_for_id", "==", user.id)),
-          where("created_by_id", "!=", user.id),
-          where("status", "==", "pending"),
-          where("is_deleted", "==", false),
-        ),
-      ),
-    ).then((count) => count.data().count),
+    getPendingApprovalCount(user.id),
   ]);
 
   return {
