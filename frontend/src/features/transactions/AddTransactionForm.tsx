@@ -6,16 +6,26 @@ import { listUsers } from "../../lib/firebase/users";
 
 type AddTransactionFormProps = {
   onSuccess: () => void;
+  initialUserId?: string;
+  initialAmount?: string;
+  initialNote?: string;
+  initialIPaid?: boolean;
 };
 
-export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
+export function AddTransactionForm({
+  onSuccess,
+  initialUserId = "",
+  initialAmount = "",
+  initialNote = "",
+  initialIPaid = true,
+}: AddTransactionFormProps) {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState("");
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState(initialUserId);
+  const [amount, setAmount] = useState(initialAmount);
+  const [note, setNote] = useState(initialNote);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [iPaid, setIPaid] = useState(true);
+  const [iPaid, setIPaid] = useState(initialIPaid);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 

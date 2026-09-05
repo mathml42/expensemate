@@ -3,6 +3,7 @@ import type { PropsWithChildren } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../features/auth/AuthContext";
+import { usePendingApprovalCount } from "../hooks/usePendingApprovalCount";
 import smallLogo from "../assets/EM_logo_small.png";
 import fullLogo from "../assets/EM_logo_full_name.png";
 
@@ -92,8 +93,22 @@ function ThemeToggleButton({
   );
 }
 
+function PendingApprovalBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+
+  return (
+    <span
+      className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-semibold leading-none text-white dark:bg-red-500"
+      title={`${count} transaction${count === 1 ? "" : "s"} awaiting your approval`}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 export function AppLayout({ children }: PropsWithChildren) {
   const { isAuthenticated, logout, user } = useAuth();
+  const pendingApprovalCount = usePendingApprovalCount();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
@@ -176,17 +191,19 @@ export function AppLayout({ children }: PropsWithChildren) {
               />
             </NavLink>
             <div className="flex items-center gap-2">
-
-              <div className="sm:hidden">
-                <ThemeToggleButton theme={theme} systemTheme={systemTheme} handleToggleTheme={handleToggleTheme} />
-              </div>
               <button
                 type="button"
                 onClick={() => setShowMenu((current) => !current)}
-                className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:hidden"
+                className="relative inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:hidden"
               >
                 Menu
                 <span aria-hidden="true">{showMenu ? "✕" : "☰"}</span>
+                {!showMenu && pendingApprovalCount > 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white dark:bg-red-500 dark:ring-slate-900"
+                  />
+                ) : null}
               </button>
             </div>
           </div>
@@ -195,9 +212,19 @@ export function AppLayout({ children }: PropsWithChildren) {
             {isAuthenticated ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
 
-                <NavLink to="/pending-approvals" className={navLinkClasses} onClick={() => setShowMenu(false)}>
+                <NavLink
+                  to="/pending-approvals"
+                  className={`${navLinkClasses} inline-flex items-center`}
+                  onClick={() => setShowMenu(false)}
+                >
                   Pending Approvals
+                  <PendingApprovalBadge count={pendingApprovalCount} />
                 </NavLink>
+                {user?.role !== "admin" ? (
+                  <NavLink to="/transactions" className={navLinkClasses} onClick={() => setShowMenu(false)}>
+                    Transactions
+                  </NavLink>
+                ) : null}
                 {user?.role === "admin" ? (
                   <>
                     <NavLink to="/admin/users" className={navLinkClasses} onClick={() => setShowMenu(false)}>

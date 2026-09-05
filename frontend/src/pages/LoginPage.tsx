@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from 'lucide-react';
 import { FormEvent, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -53,6 +54,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const from = (location.state as LocationState | null)?.from?.pathname ?? "/";
 
@@ -92,14 +94,23 @@ export function LoginPage() {
         </label>
         <label className="block">
           <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            autoComplete="current-password"
-            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500 pr-10" // Added pr-10 for button space
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 translate-y-1"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
         </label>
         {error ? <p className="text-sm text-red-700">{error}</p> : null}
         <button

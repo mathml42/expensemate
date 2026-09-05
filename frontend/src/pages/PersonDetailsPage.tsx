@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import { LoadingScreen } from "../components/LoadingScreen";
 import { useAuth } from "../features/auth/AuthContext";
 import { User } from "../features/auth/types";
 import {
@@ -127,7 +128,7 @@ export function PersonDetailsPage() {
     await fetchData();
   }
 
-  if (isLoading && !person) return <div className="px-6 py-8">Loading details...</div>;
+  if (isLoading && !person) return <LoadingScreen label="Loading transaction history" />;
   if (error || !person || !currentUser) {
     return <div className="px-6 py-8 text-red-600">{error ?? "Could not load details."}</div>;
   }

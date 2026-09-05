@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { LoadingScreen } from "../components/LoadingScreen";
 import { User } from "../features/auth/types";
 import { useAuth } from "../features/auth/AuthContext";
 import {
@@ -114,7 +115,7 @@ export function PendingApprovalPage() {
   };
 
   if (isLoading) {
-    return <div className="px-6 py-8">Loading pending approvals...</div>;
+    return <LoadingScreen label="Loading pending approvals" />;
   }
 
   if (error) {
