@@ -9,6 +9,7 @@ import { AdminUsersPage } from "../pages/AdminUsersPage";
 import { ChangePasswordPage } from "../pages/ChangePasswordPage";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
+import { MyTransactionsPage } from "../pages/MyTransactionsPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { PendingApprovalPage } from "../pages/PendingApprovalPage";
 import { PersonDetailsPage } from "../pages/PersonDetailsPage";
@@ -33,6 +34,10 @@ export const router = createHashRouter([
           {
             path: "pending-approvals",
             element: <PendingApprovalPage />,
+          },
+          {
+            path: "transactions",
+            element: <MyTransactionsPage />,
           },
           {
             path: "users/:userId",

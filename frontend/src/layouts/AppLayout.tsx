@@ -191,10 +191,6 @@ export function AppLayout({ children }: PropsWithChildren) {
               />
             </NavLink>
             <div className="flex items-center gap-2">
-
-              <div className="sm:hidden">
-                <ThemeToggleButton theme={theme} systemTheme={systemTheme} handleToggleTheme={handleToggleTheme} />
-              </div>
               <button
                 type="button"
                 onClick={() => setShowMenu((current) => !current)}
@@ -224,6 +220,11 @@ export function AppLayout({ children }: PropsWithChildren) {
                   Pending Approvals
                   <PendingApprovalBadge count={pendingApprovalCount} />
                 </NavLink>
+                {user?.role !== "admin" ? (
+                  <NavLink to="/transactions" className={navLinkClasses} onClick={() => setShowMenu(false)}>
+                    Transactions
+                  </NavLink>
+                ) : null}
                 {user?.role === "admin" ? (
                   <>
                     <NavLink to="/admin/users" className={navLinkClasses} onClick={() => setShowMenu(false)}>
