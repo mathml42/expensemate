@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { LoadingScreen } from "../components/LoadingScreen";
 import { useAuth } from "../features/auth/AuthContext";
 import { listTransactionsForUser } from "../lib/firebase/transactions";
 import type { TransactionRead, TransactionStatus } from "../types/domain";
@@ -70,6 +71,10 @@ export function MyTransactionsPage() {
   }, [currentUser, queryString, filters]);
 
   if (!currentUser) return null;
+
+  if (isLoading && transactions.length === 0 && !error) {
+    return <LoadingScreen label="Loading your transactions" />;
+  }
 
   return (
     <div className="space-y-6">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { LoadingScreen } from "../components/LoadingScreen";
 import { Modal } from "../components/Modal";
 import { useAuth } from "../features/auth/AuthContext";
 import { User } from "../features/auth/types";
@@ -160,7 +161,7 @@ export function HomePage() {
   }
 
   if (isAuthLoading || (isDataLoading && !dashboardData)) {
-    return <div className="px-6 py-8">Loading dashboard...</div>;
+    return <LoadingScreen label="Loading your dashboard" />;
   }
 
   if (error || !dashboardData) {

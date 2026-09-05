@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { LoadingScreen } from "../components/LoadingScreen";
 import type { User } from "../features/auth/types";
 import { useAuth } from "../features/auth/AuthContext";
 import { clearAllTransactions, listAllTransactions } from "../lib/firebase/transactions";
@@ -94,6 +95,10 @@ export function AdminTransactionsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to clear transactions.");
     }
+  }
+
+  if (isLoading && transactions.length === 0 && !error) {
+    return <LoadingScreen label="Loading all transactions" />;
   }
 
   return (

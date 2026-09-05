@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
+import { LoadingScreen } from "../../components/LoadingScreen";
 import { useAuth } from "./AuthContext";
 
 export function ProtectedRoute() {
@@ -7,7 +8,7 @@ export function ProtectedRoute() {
   const location = useLocation();
 
   if (isLoading) {
-    return <div className="px-6 py-8 text-sm text-slate-600">Loading...</div>;
+    return <LoadingScreen label="Signing you in" />;
   }
 
   if (!isAuthenticated) {
