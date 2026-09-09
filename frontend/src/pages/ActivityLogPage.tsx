@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { getDocs, query, where, orderBy, limit } from "firebase/firestore";
 
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "../components/ui/Table";
 import { useAuth } from "../features/auth/AuthContext";
-import type { User } from "../features/auth/types";
+import { formatDate } from "../lib/format";
 import { auditLogsCollection } from "../lib/firebase/collections";
 import type { AuditLogRead, AuditLogDocument } from "../types/domain";
 
@@ -50,37 +51,45 @@ export function ActivityLogPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-semibold tracking-normal">Activity Log</h1>
-      <div className="overflow-x-auto rounded-lg border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-            <tr>
-              <th className="px-4 py-3 font-medium">Time</th>
-              <th className="px-4 py-3 font-medium">Action</th>
-              <th className="px-4 py-3 font-medium">User</th>
-              <th className="px-4 py-3 font-medium">Reason</th>
-              <th className="px-4 py-3 font-medium">Details</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {isLoading ? (
-              <tr><td className="px-4 py-4 text-slate-500 dark:text-slate-300" colSpan={5}>Loading activity...</td></tr>
-            ) : logs.length === 0 ? (
-              <tr><td className="px-4 py-4 text-slate-500 dark:text-slate-300" colSpan={5}>No activity found.</td></tr>
-            ) : (
-              logs.map((log) => (
-                <tr key={log.id}>
-                  <td className="px-4 py-3">{log.timestamp ? log.timestamp.toLocaleString() : "-"}</td>
-                  <td className="px-4 py-3 capitalize">{log.action.split("_").join(" ").toLowerCase()}</td>
-                  <td className="px-4 py-3">{log.performed_by.full_name ?? log.performed_by.email}</td>
-                  <td className="px-4 py-3">{log.reason ?? "-"}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{log.details ? JSON.stringify(log.details) : "-"}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-tight">Activity Log</h1>
+      <Table>
+        <TableHead>
+          <tr>
+            <TableHeaderCell>Time</TableHeaderCell>
+            <TableHeaderCell>Action</TableHeaderCell>
+            <TableHeaderCell>User</TableHeaderCell>
+            <TableHeaderCell>Reason</TableHeaderCell>
+            <TableHeaderCell>Details</TableHeaderCell>
+          </tr>
+        </TableHead>
+        <TableBody>
+          {isLoading ? (
+            <TableRow>
+              <TableCell className="text-slate-500 dark:text-slate-400" colSpan={5}>
+                Loading activity...
+              </TableCell>
+            </TableRow>
+          ) : logs.length === 0 ? (
+            <TableRow>
+              <TableCell className="text-slate-500 dark:text-slate-400" colSpan={5}>
+                No activity found.
+              </TableCell>
+            </TableRow>
+          ) : (
+            logs.map((log) => (
+              <TableRow key={log.id}>
+                <TableCell className="text-xs text-slate-500 dark:text-slate-400">
+                  {log.timestamp ? formatDate(log.timestamp, "datetime") : "-"}
+                </TableCell>
+                <TableCell className="capitalize">{log.action.split("_").join(" ").toLowerCase()}</TableCell>
+                <TableCell>{log.performed_by.full_name ?? log.performed_by.email}</TableCell>
+                <TableCell>{log.reason ?? "-"}</TableCell>
+                <TableCell className="font-mono text-xs">{log.details ? JSON.stringify(log.details) : "-"}</TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

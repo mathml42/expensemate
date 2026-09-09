@@ -1,4 +1,4 @@
-import { getCountFromServer, getDocs, query, where, or, orderBy, limit, and } from "firebase/firestore";
+import { getDocs, query, where, or, orderBy, limit, and } from "firebase/firestore";
 
 import { auditLogsCollection, transactionsCollection } from "./collections";
 import { getUserById } from "./users";
@@ -33,7 +33,7 @@ async function readRecentActivityForUser(userId: string): Promise<AuditLogRead[]
 }
 
 export async function getPendingApprovalCount(userId: string): Promise<number> {
-  const snapshot = await getCountFromServer(
+  const snapshot = await getDocs(
     query(
       transactionsCollection,
       and(
@@ -44,7 +44,9 @@ export async function getPendingApprovalCount(userId: string): Promise<number> {
       ),
     ),
   );
-  return snapshot.data().count;
+  // A group-settlement transaction can need approval from both parties;
+  // once this user has already approved it, it no longer counts for them.
+  return snapshot.docs.filter((item) => !(item.data().approved_by ?? []).includes(userId)).length;
 }
 
 export async function getDashboardData(user: UserRead): Promise<DashboardData> {

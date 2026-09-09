@@ -1,5 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "../components/ui/Table";
+import { cn } from "../lib/cn";
 import type { User } from "../features/auth/types";
 import { createUser, listUsers, sendAdminPasswordReset, updateUser } from "../lib/firebase/users";
 
@@ -93,7 +99,6 @@ export function AdminUsersPage() {
   async function toggleActive(user: User) {
     try {
       const updatedUser = await updateUser(user.id, { is_active: !user.is_active });
-      console.log("updatedUser", updatedUser);
       setUsers((current) => current.map((item) => (item.id === user.id ? updatedUser : item)));
       if (editingUserId === user.id) {
         setEditForm((current) => ({ ...current, is_active: updatedUser.is_active }));
@@ -111,146 +116,160 @@ export function AdminUsersPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-normal">Users</h1>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
 
-      <form onSubmit={handleSubmit} className="grid gap-5 rounded-lg border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:grid-cols-2">
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
-          <input
+      <Card padding="lg">
+        <form onSubmit={handleSubmit} className="grid gap-5 md:grid-cols-2">
+          <Input
+            label="Email"
             type="email"
             value={form.email}
             onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
             required
-            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Full name</span>
-          <input
+          <Input
+            label="Full name"
             type="text"
             value={form.full_name}
             onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
-            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
-          <input
+          <Input
+            label="Password"
             type="password"
             value={form.password}
             onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
             required
             minLength={8}
-            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Role</span>
-          <select
+          <Select
+            label="Role"
             value={form.role}
             onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as CreateUserPayload["role"] }))}
-            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
           >
             <option value="user">User</option>
             <option value="admin">Admin</option>
-          </select>
-        </label>
+          </Select>
 
-        <div className="md:col-span-2">
-          {error ? <p className="mb-3 text-sm text-red-700">{error}</p> : null}
-          {success ? <p className="mb-3 text-sm text-green-700">{success}</p> : null}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
-          >
-            {isSubmitting ? "Creating..." : "Create User"}
-          </button>
-        </div>
-      </form>
+          <div className="md:col-span-2">
+            {error ? <p className="mb-3 text-sm text-danger-700 dark:text-danger-400">{error}</p> : null}
+            {success ? <p className="mb-3 text-sm text-success-700 dark:text-success-400">{success}</p> : null}
+            <Button type="submit" variant="primary" isLoading={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create User"}
+            </Button>
+          </div>
+        </form>
+      </Card>
 
-      <div className="overflow-x-auto rounded-lg border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-            <tr>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Role</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {isLoading ? (
-              <tr>
-                <td className="px-4 py-4 text-slate-500" colSpan={5}>
-                  Loading users...
-                </td>
-              </tr>
-            ) : users.length === 0 ? (
-              <tr>
-                <td className="px-4 py-4 text-slate-500" colSpan={5}>
-                  No users found.
-                </td>
-              </tr>
-            ) : (
-              users.map((user) => {
-                const isEditing = editingUserId === user.id;
-                return (
-                  <tr key={user.id}>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input value={editForm.full_name} onChange={(event) => setEditForm((current) => ({ ...current, full_name: event.target.value }))} className="w-full rounded-md border px-2 py-1" />
-                      ) : (
-                        user.full_name ?? "-"
+      <Table>
+        <TableHead>
+          <tr>
+            <TableHeaderCell>Name</TableHeaderCell>
+            <TableHeaderCell>Email</TableHeaderCell>
+            <TableHeaderCell>Role</TableHeaderCell>
+            <TableHeaderCell>Status</TableHeaderCell>
+            <TableHeaderCell>Actions</TableHeaderCell>
+          </tr>
+        </TableHead>
+        <TableBody>
+          {isLoading ? (
+            <TableRow>
+              <TableCell className="text-slate-500 dark:text-slate-400" colSpan={5}>
+                Loading users...
+              </TableCell>
+            </TableRow>
+          ) : users.length === 0 ? (
+            <TableRow>
+              <TableCell className="text-slate-500 dark:text-slate-400" colSpan={5}>
+                No users found.
+              </TableCell>
+            </TableRow>
+          ) : (
+            users.map((user) => {
+              const isEditing = editingUserId === user.id;
+              return (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    {isEditing ? (
+                      <Input
+                        size="sm"
+                        value={editForm.full_name}
+                        onChange={(event) => setEditForm((current) => ({ ...current, full_name: event.target.value }))}
+                      />
+                    ) : (
+                      user.full_name ?? "-"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditing ? (
+                      <Input
+                        size="sm"
+                        type="email"
+                        value={editForm.email}
+                        onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))}
+                      />
+                    ) : (
+                      user.email
+                    )}
+                  </TableCell>
+                  <TableCell className="capitalize">
+                    {isEditing ? (
+                      <Select
+                        size="sm"
+                        value={editForm.role}
+                        onChange={(event) => setEditForm((current) => ({ ...current, role: event.target.value }))}
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </Select>
+                    ) : (
+                      user.role
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold",
+                        user.is_active
+                          ? "bg-success-100 text-success-800 dark:bg-success-900/40 dark:text-success-300"
+                          : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input type="email" value={editForm.email} onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))} className="w-full rounded-md border px-2 py-1" />
-                      ) : (
-                        user.email
-                      )}
-                    </td>
-                    <td className="px-4 py-3 capitalize">
-                      {isEditing ? (
-                        <select value={editForm.role} onChange={(event) => setEditForm((current) => ({ ...current, role: event.target.value }))} className="rounded-md border px-2 py-1">
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      ) : (
-                        user.role
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{user.is_active ? "Active" : "Inactive"}</td>
-                    <td className="space-x-2 px-4 py-3">
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {user.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-2">
                       {isEditing ? (
                         <>
-                          <button onClick={() => void saveEdit()} className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">Save</button>
-                          <button onClick={() => setEditingUserId(null)} className="rounded-md border px-3 py-1.5 text-xs font-medium">Cancel</button>
+                          <Button size="sm" variant="primary" onClick={() => void saveEdit()}>
+                            Save
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => setEditingUserId(null)}>
+                            Cancel
+                          </Button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => startEdit(user)} className="rounded-md border px-3 py-1.5 text-xs font-medium">Edit</button>
-                          <button onClick={() => void toggleActive(user)} className="rounded-md border px-3 py-1.5 text-xs font-medium">
+                          <Button size="sm" variant="secondary" onClick={() => startEdit(user)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => void toggleActive(user)}>
                             {user.is_active ? "Deactivate" : "Activate"}
-                          </button>
-                          <button onClick={() => void resetPassword(user)} className="rounded-md border px-3 py-1.5 text-xs font-medium">Send Reset Email</button>
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => void resetPassword(user)}>
+                            Send Reset Email
+                          </Button>
                         </>
                       )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

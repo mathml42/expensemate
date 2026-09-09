@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { LoadingScreen } from "../components/LoadingScreen";
+import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { SkeletonRow } from "../components/ui/Skeleton";
+import { StatusPill } from "../components/ui/StatusPill";
 import { useAuth } from "../features/auth/AuthContext";
+import { cn } from "../lib/cn";
+import { formatCurrency, formatDate } from "../lib/format";
 import { listTransactionsForUser } from "../lib/firebase/transactions";
 import type { TransactionRead, TransactionStatus } from "../types/domain";
 
@@ -19,16 +27,6 @@ const emptyFilters: Filters = {
   date_from: "",
   date_to: "",
   status: "",
-};
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount);
-}
-
-const statusColors: Record<TransactionStatus, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  approved: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
 };
 
 export function MyTransactionsPage() {
@@ -78,94 +76,65 @@ export function MyTransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-semibold tracking-normal">Transactions</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
 
-      <div className="grid gap-3 rounded-md border bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:grid-cols-5">
-        <input
-          placeholder="Search note"
-          value={filters.note}
-          onChange={(e) => setFilters({ ...filters, note: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        />
-        <input
-          placeholder="Amount"
-          type="number"
-          value={filters.amount}
-          onChange={(e) => setFilters({ ...filters, amount: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        />
-        <input
-          type="date"
-          value={filters.date_from}
-          onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        />
-        <input
-          type="date"
-          value={filters.date_to}
-          onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        />
-        <select
-          value={filters.status}
-          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        >
+      <Card padding="sm" className="grid gap-3 md:grid-cols-5">
+        <Input placeholder="Search note" value={filters.note} onChange={(e) => setFilters({ ...filters, note: e.target.value })} />
+        <Input placeholder="Amount" type="number" value={filters.amount} onChange={(e) => setFilters({ ...filters, amount: e.target.value })} />
+        <Input type="date" value={filters.date_from} onChange={(e) => setFilters({ ...filters, date_from: e.target.value })} />
+        <Input type="date" value={filters.date_to} onChange={(e) => setFilters({ ...filters, date_to: e.target.value })} />
+        <Select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
-        </select>
-      </div>
+        </Select>
+      </Card>
 
       <div className="space-y-3">
         {isLoading ? (
-          <div className="rounded-md border bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            Loading transactions...
-          </div>
+          <Card padding="none">
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
+          </Card>
         ) : error ? (
-          <div className="rounded-md border bg-white p-8 text-center text-red-600 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            {error}
-          </div>
+          <Card className="text-center text-danger-600 dark:text-danger-400">{error}</Card>
         ) : transactions.length === 0 ? (
-          <div className="rounded-md border bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            No transactions found.
-          </div>
+          <EmptyState title="No transactions found." />
         ) : (
           transactions.map((transaction) => {
             const iPaid = transaction.paid_by_id === currentUser.id;
             const counterparty = iPaid ? transaction.paid_for : transaction.paid_by;
             const amountColor = transaction.is_deleted
-              ? "text-slate-400 dark:text-slate-400"
+              ? "text-slate-400"
               : iPaid
-                ? "text-green-600"
-                : "text-red-600";
+                ? "text-success-600 dark:text-success-400"
+                : "text-danger-600 dark:text-danger-400";
 
             return (
-              <div key={transaction.id} className="rounded-md border bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+              <Card key={transaction.id} padding="sm">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className={`font-semibold ${amountColor}`}>
+                    <p className={cn("text-base font-semibold tabular-nums", amountColor)}>
                       {iPaid ? "+" : "-"} {formatCurrency(transaction.amount)}
                     </p>
-                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                    <p className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">
                       {iPaid ? "You paid" : "Paid by"} {counterparty.full_name ?? counterparty.email}
                     </p>
                     <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{transaction.note}</p>
                     {transaction.is_deleted ? (
-                      <p className="mt-1 text-sm text-red-600">Deleted: {transaction.deletion_reason}</p>
+                      <p className="mt-1 text-sm text-danger-600 dark:text-danger-400">
+                        Deleted: {transaction.deletion_reason}
+                      </p>
                     ) : null}
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-slate-500">{new Date(transaction.date).toLocaleDateString()}</p>
-                    <span
-                      className={`mt-1 inline-block rounded-full px-2 py-1 text-xs font-semibold capitalize ${statusColors[transaction.status]}`}
-                    >
-                      {transaction.status}
-                    </span>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{formatDate(transaction.date)}</p>
+                    <StatusPill status={transaction.is_deleted ? "deleted" : transaction.status} className="mt-1" />
                   </div>
                 </div>
-              </div>
+              </Card>
             );
           })
         )}

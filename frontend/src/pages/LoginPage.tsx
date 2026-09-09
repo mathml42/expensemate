@@ -1,8 +1,11 @@
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { Input } from "../components/ui/Input";
 import { useAuth } from "../features/auth/AuthContext";
 
 type LocationState = {
@@ -78,49 +81,43 @@ export function LoginPage() {
   }
 
   return (
-    <section className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <h1 className="text-3xl font-semibold tracking-normal text-slate-950 dark:text-slate-100">Sign in</h1>
-      <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            autoComplete="email"
-            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-          />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
+    <Card className="mx-auto max-w-md animate-fade-in-up" padding="lg">
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Sign in</h1>
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <Input
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+          autoComplete="email"
+        />
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</label>
           <div className="relative">
-            <input
+            <Input
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
               autoComplete="current-password"
-              className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500 pr-10" // Added pr-10 for button space
+              className="pr-10"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 translate-y-1"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-        </label>
-        {error ? <p className="text-sm text-red-700">{error}</p> : null}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-md bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
-        >
+        </div>
+        {error ? <p className="text-sm text-danger-700 dark:text-danger-400">{error}</p> : null}
+        <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting}>
           {isSubmitting ? "Signing in..." : "Sign in"}
-        </button>
+        </Button>
       </form>
-    </section>
+    </Card>
   );
 }
