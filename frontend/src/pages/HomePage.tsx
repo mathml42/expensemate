@@ -6,6 +6,7 @@ import { Modal } from "../components/Modal";
 import { useAuth } from "../features/auth/AuthContext";
 import { User } from "../features/auth/types";
 import { AddTransactionForm } from "../features/transactions/AddTransactionForm";
+import { SplitGroupForm } from "../features/transactions/SplitGroupForm";
 import { getDashboardData } from "../lib/firebase/dashboard";
 
 type UserBalance = {
@@ -111,6 +112,7 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [settleTarget, setSettleTarget] = useState<SettleTarget | null>(null);
+  const [addMode, setAddMode] = useState<"single" | "group">("single");
   const [showSettled, setShowSettled] = useState(false);
   const { user, isLoading: isAuthLoading } = useAuth();
 
@@ -143,6 +145,7 @@ export function HomePage() {
 
   function openAddTransaction() {
     setSettleTarget(null);
+    setAddMode("single");
     setIsModalOpen(true);
   }
 
@@ -152,6 +155,7 @@ export function HomePage() {
       amount: Math.abs(balance).toFixed(2),
       iPaid: balance < 0,
     });
+    setAddMode("single");
     setIsModalOpen(true);
   }
 
@@ -263,14 +267,49 @@ export function HomePage() {
       </div>
 
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={settleTarget ? "Settle Up" : "Add New Transaction"}>
-        <AddTransactionForm
-          onSuccess={handleTransactionSuccess}
-          initialUserId={settleTarget?.userId}
-          initialAmount={settleTarget?.amount}
-          initialIPaid={settleTarget?.iPaid}
-          initialNote={settleTarget ? "Settlement" : undefined}
-        />
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={settleTarget ? "Settle Up" : addMode === "group" ? "Split with Group" : "Add New Transaction"}
+      >
+        {!settleTarget ? (
+          <div className="mb-4 flex gap-1 rounded-md bg-slate-100 p-1 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => setAddMode("single")}
+              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                addMode === "single"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+            >
+              Pay Someone
+            </button>
+            <button
+              type="button"
+              onClick={() => setAddMode("group")}
+              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                addMode === "group"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+            >
+              Split with Group
+            </button>
+          </div>
+        ) : null}
+
+        {addMode === "group" && !settleTarget ? (
+          <SplitGroupForm onSuccess={handleTransactionSuccess} />
+        ) : (
+          <AddTransactionForm
+            onSuccess={handleTransactionSuccess}
+            initialUserId={settleTarget?.userId}
+            initialAmount={settleTarget?.amount}
+            initialIPaid={settleTarget?.iPaid}
+            initialNote={settleTarget ? "Settlement" : undefined}
+          />
+        )}
       </Modal>
     </div>
   );

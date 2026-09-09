@@ -25,7 +25,7 @@ export function assertValidTransactionInput(input: Partial<TransactionBase>) {
     throw new Error("Amount must be greater than 0.");
   }
 
-  if (input.amount !== undefined && Math.round(input.amount * 100) !== input.amount * 100) {
+  if (input.amount !== undefined && Math.abs(input.amount - Math.round(input.amount * 100) / 100) > 1e-9) {
     throw new Error("Amount can have at most 2 decimal places.");
   }
 

@@ -45,6 +45,7 @@ export type TransactionRead = TransactionBase & {
   paid_by_id: string;
   paid_for_id: string;
   created_by_id: string;
+  approved_by: string[];
   created_at: Date | null;
   updated_at: Date | null;
   paid_by: UserRead;
@@ -106,6 +107,7 @@ export type TransactionDocument = TransactionBase & {
   paid_by_id: string;
   paid_for_id: string;
   created_by_id: string;
+  approved_by: string[];
   created_at: Timestamp;
   updated_at: Timestamp;
 };

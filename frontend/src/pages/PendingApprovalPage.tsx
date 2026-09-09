@@ -7,14 +7,7 @@ import {
   listPendingApprovals,
   rejectTransaction,
 } from "../lib/firebase/transactions";
-
-type Transaction = {
-  id: string;
-  amount: number;
-  note: string;
-  date: string;
-  created_by: User;
-};
+import type { TransactionRead } from "../types/domain";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -23,8 +16,21 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-function ApprovalCard({ transaction, onUpdate, currentUser }: { transaction: Transaction, onUpdate: () => void, currentUser: User }) {
+function ApprovalCard({
+  transaction,
+  onUpdate,
+  currentUser,
+}: {
+  transaction: TransactionRead;
+  onUpdate: () => void;
+  currentUser: User;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const youOwe = transaction.paid_for_id === currentUser.id;
+  const counterparty = youOwe ? transaction.paid_by : transaction.paid_for;
+  const isCrossTransaction = transaction.created_by_id !== transaction.paid_by_id
+    && transaction.created_by_id !== transaction.paid_for_id;
 
   async function handleApprove() {
     setIsSubmitting(true);
@@ -58,10 +64,23 @@ function ApprovalCard({ transaction, onUpdate, currentUser }: { transaction: Tra
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p>
-            <span className="font-semibold">{transaction.created_by.full_name ?? transaction.created_by.email}</span> wants your approval for a transaction.
+            {youOwe ? (
+              <>
+                You owe{" "}
+                <span className="font-semibold">{counterparty.full_name ?? counterparty.email}</span>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">{counterparty.full_name ?? counterparty.email}</span> owes you
+              </>
+            )}
           </p>
           <p className="mt-2 text-2xl font-semibold">{formatCurrency(transaction.amount)}</p>
           <p className="mt-1 text-sm text-slate-600">{transaction.note}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Requested by {transaction.created_by.full_name ?? transaction.created_by.email}
+            {isCrossTransaction ? " as part of a group split — the other person also needs to confirm." : ""}
+          </p>
         </div>
         <div className="text-sm text-slate-500">{new Date(transaction.date).toLocaleDateString()}</div>
       </div>
@@ -87,7 +106,7 @@ function ApprovalCard({ transaction, onUpdate, currentUser }: { transaction: Tra
 
 
 export function PendingApprovalPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { refreshUser, user } = useAuth();

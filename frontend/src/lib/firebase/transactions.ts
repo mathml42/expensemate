@@ -49,6 +49,7 @@ async function hydrateTransaction(id: string, data: TransactionDocument): Promis
     paid_by_id: data.paid_by_id,
     paid_for_id: data.paid_for_id,
     created_by_id: data.created_by_id,
+    approved_by: data.approved_by ?? [],
     created_at: data.created_at?.toDate() ?? null,
     updated_at: data.updated_at?.toDate() ?? null,
     paid_by: paidBy,
@@ -57,15 +58,19 @@ async function hydrateTransaction(id: string, data: TransactionDocument): Promis
   };
 }
 
-export async function createTransaction(input: TransactionCreate, user: UserRead) {
+async function createTransactionRecord(input: {
+  paidById: string;
+  paidForId: string;
+  amount: number;
+  note: string;
+  date: string;
+  creator: UserRead;
+}) {
   assertValidTransactionInput(input);
 
-  if (user.id === input.paid_for_id) {
-    throw new Error("Users cannot create transactions with themselves.");
+  if (input.paidById === input.paidForId) {
+    throw new Error("A transaction must be between two different users.");
   }
-
-  const paidById = input.i_paid ? user.id : input.paid_for_id;
-  const paidForId = input.i_paid ? input.paid_for_id : user.id;
 
   const ref = await addDoc(transactionsCollection, {
     amount: input.amount,
@@ -75,21 +80,22 @@ export async function createTransaction(input: TransactionCreate, user: UserRead
     rejection_reason: null,
     is_deleted: false,
     deletion_reason: null,
-    paid_by_id: paidById,
-    paid_for_id: paidForId,
-    created_by_id: user.id,
+    paid_by_id: input.paidById,
+    paid_for_id: input.paidForId,
+    created_by_id: input.creator.id,
+    approved_by: [],
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
 
   await createAuditLog({
     action: "CREATE_TRANSACTION",
-    performedBy: user,
+    performedBy: input.creator,
     details: {
       transaction_id: ref.id,
       amount: input.amount,
-      paid_by_id: paidById,
-      paid_for_id: paidForId,
+      paid_by_id: input.paidById,
+      paid_for_id: input.paidForId,
     },
   });
 
@@ -98,6 +104,37 @@ export async function createTransaction(input: TransactionCreate, user: UserRead
     throw new Error("Transaction was created but could not be read back.");
   }
   return created;
+}
+
+export async function createTransaction(input: TransactionCreate, user: UserRead) {
+  if (user.id === input.paid_for_id) {
+    throw new Error("Users cannot create transactions with themselves.");
+  }
+
+  const paidById = input.i_paid ? user.id : input.paid_for_id;
+  const paidForId = input.i_paid ? input.paid_for_id : user.id;
+
+  return createTransactionRecord({
+    paidById,
+    paidForId,
+    amount: input.amount,
+    note: input.note,
+    date: input.date,
+    creator: user,
+  });
+}
+
+/**
+ * Creates a transaction between two group members who may both be someone
+ * other than the creator (e.g. a settlement produced by splitting a group
+ * expense with multiple payers). Both paidById and paidForId will need to
+ * approve it, since neither of them authored it themselves.
+ */
+export async function createGroupTransaction(
+  input: { paidById: string; paidForId: string; amount: number; note: string; date: string },
+  creator: UserRead,
+) {
+  return createTransactionRecord({ ...input, creator });
 }
 
 export async function getTransactionById(transactionId: string): Promise<TransactionRead | null> {
@@ -207,7 +244,12 @@ export async function listPendingApprovals(userId: string): Promise<TransactionR
     ),
   );
   const transactions = await Promise.all(
-    snapshot.docs.map((item) => hydrateTransaction(item.id, item.data())),
+    snapshot.docs
+      // A group-settlement transaction can need approval from both parties;
+      // once this user has already approved it, it should drop off their list
+      // even though it's still "pending" the other party.
+      .filter((item) => !(item.data().approved_by ?? []).includes(userId))
+      .map((item) => hydrateTransaction(item.id, item.data())),
   );
   return transactions.sort((left, right) => right.date.localeCompare(left.date));
 }
@@ -231,6 +273,9 @@ export async function updateTransaction(
   await updateDoc(transactionDoc(transactionId), {
     ...input,
     ...(input.note ? { note: input.note.trim() } : {}),
+    // Any edit changes what's being approved, so prior sign-offs (which may
+    // only be partial, for a group-settlement transaction) no longer count.
+    approved_by: [],
     ...(shouldResetApproval ? { status: "pending", rejection_reason: null } : {}),
     updated_at: serverTimestamp(),
   });
@@ -249,8 +294,23 @@ export async function updateTransaction(
 }
 
 export async function approveTransaction(transactionId: string, user: UserRead) {
+  const current = await getDoc(doc(transactionsCollection, transactionId));
+  if (!current.exists()) {
+    throw new Error("Transaction not found.");
+  }
+
+  const data = current.data();
+  // Whoever didn't create the transaction has to sign off on it. Normally
+  // that's a single person, but a group-settlement transaction can be
+  // between two people neither of whom created it, so both must approve.
+  const requiredApprovers = [data.paid_by_id, data.paid_for_id].filter((id) => id !== data.created_by_id);
+  const approvedBy = new Set(data.approved_by ?? []);
+  approvedBy.add(user.id);
+  const isFullyApproved = requiredApprovers.every((id) => approvedBy.has(id));
+
   await updateDoc(transactionDoc(transactionId), {
-    status: "approved",
+    approved_by: Array.from(approvedBy),
+    status: isFullyApproved ? "approved" : "pending",
     rejection_reason: null,
     updated_at: serverTimestamp(),
   });
