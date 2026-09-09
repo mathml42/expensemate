@@ -1,8 +1,18 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { LoadingScreen } from "../components/LoadingScreen";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { StatusPill } from "../components/ui/StatusPill";
+import { Textarea } from "../components/ui/Textarea";
 import { useAuth } from "../features/auth/AuthContext";
 import { User } from "../features/auth/types";
+import { formatCurrency, formatDate } from "../lib/format";
+import { cn } from "../lib/cn";
 import {
   listTransactionsForUser,
   softDeleteTransaction,
@@ -39,16 +49,6 @@ const emptyFilters: Filters = {
   status: "",
 };
 
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount);
-}
-
-const statusColors: Record<Transaction["status"], string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  approved: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-};
-
 export function PersonDetailsPage() {
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
@@ -57,6 +57,9 @@ export function PersonDetailsPage() {
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [editForm, setEditForm] = useState({ amount: "", note: "", date: "" });
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,134 +123,164 @@ export function PersonDetailsPage() {
     await fetchData();
   }
 
-  async function deleteTransaction(transaction: Transaction) {
-    const reason = window.prompt("Reason for deleting this transaction:");
-    if (!reason) return;
-    if (!currentUser) return;
-    await softDeleteTransaction(transaction.id, reason, currentUser);
-    await fetchData();
+  async function confirmDelete() {
+    if (!deletingTransaction || !currentUser || !deleteReason.trim()) return;
+    setIsDeleting(true);
+    try {
+      await softDeleteTransaction(deletingTransaction.id, deleteReason, currentUser);
+      setDeletingTransaction(null);
+      setDeleteReason("");
+      await fetchData();
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   if (isLoading && !person) return <LoadingScreen label="Loading transaction history" />;
   if (error || !person || !currentUser) {
-    return <div className="px-6 py-8 text-red-600">{error ?? "Could not load details."}</div>;
+    return <div className="px-6 py-8 text-danger-600 dark:text-danger-400">{error ?? "Could not load details."}</div>;
   }
 
   const balance = transactions.reduce((acc, t) => {
     if (t.status !== "approved" || t.is_deleted) return acc;
     return t.paid_by_id === currentUser.id ? acc + t.amount : acc - t.amount;
   }, 0);
-  const balanceColor = balance > 0 ? "text-green-600" : balance < 0 ? "text-red-600" : "text-slate-800 dark:text-white";
+  const balanceColor =
+    balance > 0
+      ? "text-success-600 dark:text-success-400"
+      : balance < 0
+        ? "text-danger-600 dark:text-danger-400"
+        : "text-slate-800 dark:text-white";
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold tracking-normal text-slate-950 dark:text-slate-100">{person.full_name ?? person.email}</h1>
-        <p className="mt-1 text-lg text-slate-700 dark:text-slate-300">
-          Current Balance: <span className={`font-semibold ${balanceColor}`}>{formatCurrency(balance)}</span>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+          {person.full_name ?? person.email}
+        </h1>
+        <p className="mt-1 text-base text-slate-700 dark:text-slate-300">
+          Current Balance:{" "}
+          <span className={cn("font-semibold tabular-nums", balanceColor)}>{formatCurrency(balance)}</span>
         </p>
       </div>
 
-      <div className="grid gap-3 rounded-md border bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:grid-cols-5">
-        <input
+      <Card padding="sm" className="grid gap-3 md:grid-cols-5">
+        <Input
           placeholder="Search note"
           value={filters.note}
           onChange={(e) => setFilters({ ...filters, note: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
         />
-        <input
+        <Input
           placeholder="Amount"
           type="number"
           value={filters.amount}
           onChange={(e) => setFilters({ ...filters, amount: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
         />
-        <input
-          type="date"
-          value={filters.date_from}
-          onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        />
-        <input
-          type="date"
-          value={filters.date_to}
-          onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        />
-        <select
-          value={filters.status}
-          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-        >
+        <Input type="date" value={filters.date_from} onChange={(e) => setFilters({ ...filters, date_from: e.target.value })} />
+        <Input type="date" value={filters.date_to} onChange={(e) => setFilters({ ...filters, date_to: e.target.value })} />
+        <Select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
-        </select>
-      </div>
+        </Select>
+      </Card>
 
       {editing ? (
-        <form onSubmit={saveEdit} className="grid gap-3 rounded-md border bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:grid-cols-4">
-          <input
+        <form
+          onSubmit={saveEdit}
+          className="grid gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 dark:shadow-none md:grid-cols-4"
+        >
+          <Input
             type="number"
             min="0.01"
             step="0.01"
             value={editForm.amount}
             onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
-          <input
-            value={editForm.note}
-            onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-          />
-          <input
-            type="date"
-            value={editForm.date}
-            onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-          />
+          <Input value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} />
+          <Input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
           <div className="flex gap-2">
-            <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">Save</button>
-            <button type="button" onClick={() => setEditing(null)} className="rounded-md border px-4 py-2 text-sm font-medium">Cancel</button>
+            <Button type="submit" variant="primary">
+              Save
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
           </div>
         </form>
       ) : null}
 
       <div className="space-y-3">
-        <h2 className="text-xl font-semibold">Transaction History</h2>
+        <h2 className="text-base font-semibold">Transaction History</h2>
         {transactions.map((transaction) => {
           const isOwed = transaction.paid_for_id === currentUser.id;
-          const amountColor = transaction.is_deleted ? "text-slate-400 dark:text-slate-400" : isOwed ? "text-red-600" : "text-green-600";
+          const amountColor = transaction.is_deleted
+            ? "text-slate-400"
+            : isOwed
+              ? "text-danger-600 dark:text-danger-400"
+              : "text-success-600 dark:text-success-400";
           const canManage = transaction.created_by_id === currentUser.id && !transaction.is_deleted;
           return (
-            <div key={transaction.id} className="rounded-md border bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+            <Card key={transaction.id} padding="sm">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className={`font-semibold ${amountColor}`}>{isOwed ? "-" : "+"} {formatCurrency(transaction.amount)}</p>
+                  <p className={cn("text-base font-semibold tabular-nums", amountColor)}>
+                    {isOwed ? "-" : "+"} {formatCurrency(transaction.amount)}
+                  </p>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{transaction.note}</p>
-                  {transaction.is_deleted ? <p className="mt-1 text-sm text-red-600">Deleted: {transaction.deletion_reason}</p> : null}
+                  {transaction.is_deleted ? (
+                    <p className="mt-1 text-sm text-danger-600 dark:text-danger-400">
+                      Deleted: {transaction.deletion_reason}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-slate-500">{new Date(transaction.date).toLocaleDateString()}</p>
-                  <span className={`mt-1 inline-block rounded-full px-2 py-1 text-xs font-semibold capitalize ${statusColors[transaction.status]}`}>
-                    {transaction.status}
-                  </span>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{formatDate(transaction.date)}</p>
+                  <StatusPill
+                    status={transaction.is_deleted ? "deleted" : transaction.status}
+                    className="mt-1"
+                  />
                 </div>
               </div>
               {canManage ? (
                 <div className="mt-3 flex justify-end gap-2">
-                  <button onClick={() => startEdit(transaction)} className="rounded-md border px-3 py-1.5 text-sm font-medium">Edit</button>
-                  <button onClick={() => void deleteTransaction(transaction)} className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700">Delete</button>
+                  <Button size="sm" variant="secondary" onClick={() => startEdit(transaction)}>
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="danger-ghost" onClick={() => setDeletingTransaction(transaction)}>
+                    Delete
+                  </Button>
                 </div>
               ) : null}
-            </div>
+            </Card>
           );
         })}
-        {transactions.length === 0 ? (
-          <div className="rounded-md border bg-white p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">No transactions found.</div>
-        ) : null}
+        {transactions.length === 0 ? <EmptyState title="No transactions found." /> : null}
       </div>
+
+      <ConfirmDialog
+        isOpen={deletingTransaction !== null}
+        onClose={() => {
+          setDeletingTransaction(null);
+          setDeleteReason("");
+        }}
+        onConfirm={() => void confirmDelete()}
+        title="Delete transaction"
+        description="This transaction will be marked deleted and excluded from balances."
+        confirmLabel="Delete transaction"
+        variant="danger"
+        isLoading={isDeleting}
+        confirmDisabled={!deleteReason.trim()}
+      >
+        <Textarea
+          label="Reason"
+          value={deleteReason}
+          onChange={(e) => setDeleteReason(e.target.value)}
+          rows={3}
+          placeholder="e.g. Duplicate entry"
+        />
+      </ConfirmDialog>
     </div>
   );
 }

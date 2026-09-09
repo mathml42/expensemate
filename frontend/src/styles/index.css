@@ -17,13 +17,17 @@
 
   body {
     margin: 0;
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #f6f8f7;
+    color: #17211b;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
   .dark body {
-    background-color: #0f172a;
-    color: #f8fafc;
+    background-color: #0b0f14;
+    color: #f4f7fa;
   }
 
   input,
@@ -31,5 +35,74 @@
   select,
   button {
     font: inherit;
+  }
+
+  ::selection {
+    background-color: rgb(21 153 87 / 0.22);
+  }
+
+  .dark ::selection {
+    background-color: rgb(53 208 127 / 0.28);
+  }
+
+  :focus-visible {
+    outline: 2px solid #159957;
+    outline-offset: 2px;
+  }
+
+  .dark :focus-visible {
+    outline-color: #35d07f;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #d8e1dc;
+    border-radius: 9999px;
+    border: 2px solid #f6f8f7;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background-color: #263442;
+    border-color: #0b0f14;
+  }
+}
+
+@layer utilities {
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      rgb(216 225 220 / 0.5) 25%,
+      rgb(216 225 220 / 0.9) 37%,
+      rgb(216 225 220 / 0.5) 63%
+    );
+    background-size: 400% 100%;
+  }
+
+  .dark .skeleton-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      rgb(38 52 66 / 0.5) 25%,
+      rgb(38 52 66 / 0.9) 37%,
+      rgb(38 52 66 / 0.5) 63%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,6 +1,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { User } from "../auth/types";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Select } from "../../components/ui/Select";
+import { Textarea } from "../../components/ui/Textarea";
 import { createTransaction } from "../../lib/firebase/transactions";
 import { listUsers } from "../../lib/firebase/users";
 
@@ -72,43 +76,26 @@ export function AddTransactionForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="user" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-          User
-        </label>
-        <select
-          id="user"
-          value={selectedUserId}
-          onChange={(e) => setSelectedUserId(e.target.value)}
-          required
-          className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-        >
-          <option value="" disabled>
-            Select a user
+      <Select label="User" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)} required>
+        <option value="" disabled>
+          Select a user
+        </option>
+        {users.map((user) => (
+          <option key={user.id} value={user.id}>
+            {user.full_name ?? user.email}
           </option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.full_name ?? user.email}
-            </option>
-          ))}
-        </select>
-      </div>
+        ))}
+      </Select>
 
-      <div>
-        <label htmlFor="amount" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-          Amount
-        </label>
-        <input
-          type="number"
-          id="amount"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-          step="0.01"
-          min="0.01"
-          className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-        />
-      </div>
+      <Input
+        label="Amount"
+        type="number"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        required
+        step="0.01"
+        min="0.01"
+      />
 
       <fieldset className="flex flex-col gap-3 sm:flex-row sm:items-center sm:space-x-4">
         <legend className="sr-only">Transaction direction</legend>
@@ -119,7 +106,7 @@ export function AddTransactionForm({
             type="radio"
             checked={iPaid}
             onChange={() => setIPaid(true)}
-            className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-500"
+            className="h-4 w-4 border-slate-300 text-primary-600 focus:ring-primary-500 dark:border-slate-500"
           />
           <label htmlFor="i-paid" className="block text-sm text-slate-900 dark:text-slate-100">
             I paid for them
@@ -132,7 +119,7 @@ export function AddTransactionForm({
             type="radio"
             checked={!iPaid}
             onChange={() => setIPaid(false)}
-            className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-500"
+            className="h-4 w-4 border-slate-300 text-primary-600 focus:ring-primary-500 dark:border-slate-500"
           />
           <label htmlFor="they-paid" className="block text-sm text-slate-900 dark:text-slate-100">
             They paid for me
@@ -140,44 +127,16 @@ export function AddTransactionForm({
         </div>
       </fieldset>
 
-      <div>
-        <label htmlFor="note" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-          Note
-        </label>
-        <textarea
-          id="note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          required
-          rows={3}
-          className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-        />
-      </div>
+      <Textarea label="Note" value={note} onChange={(e) => setNote(e.target.value)} required rows={3} />
 
-      <div>
-        <label htmlFor="date" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-          Date
-        </label>
-        <input
-          type="date"
-          id="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          required
-          className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-        />
-      </div>
+      <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
 
       <div className="flex justify-end pt-2">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" isLoading={isSubmitting}>
           {isSubmitting ? "Creating..." : "Create Transaction"}
-        </button>
+        </Button>
       </div>
     </form>
   );

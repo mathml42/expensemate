@@ -1,14 +1,24 @@
 import { useEffect, useState } from "react";
 import type { PropsWithChildren } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { BellRing, KeyRound, LogOut, Menu, Moon, Receipt, ScrollText, Sun, Users, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
+import { DropdownMenu } from "../components/ui/DropdownMenu";
 import { useAuth } from "../features/auth/AuthContext";
 import { usePendingApprovalCount } from "../hooks/usePendingApprovalCount";
+import { cn } from "../lib/cn";
 import smallLogo from "../assets/EM_logo_small.png";
 import fullLogo from "../assets/EM_logo_full_name.png";
 
-const navLinkClasses =
-  "block rounded-md px-3 py-2 font-medium text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white";
+function navLinkClasses(isActive: boolean) {
+  return cn(
+    "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 ease-emphasized",
+    isActive
+      ? "bg-primary-600/10 text-primary-700 dark:bg-primary-400/10 dark:text-primary-400"
+      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white",
+  );
+}
 
 function ThemeToggleButton({
   theme,
@@ -19,76 +29,18 @@ function ThemeToggleButton({
   systemTheme: "light" | "dark";
   handleToggleTheme: () => void;
 }) {
+  const effectiveTheme = theme === "system" ? systemTheme : theme;
+  const Icon = effectiveTheme === "dark" ? Moon : Sun;
+
   return (
     <button
       type="button"
       onClick={handleToggleTheme}
-      className="flex items-center justify-center rounded-md w-10 h-10 text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white"
+      className="flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
       title="Toggle theme"
+      aria-label="Toggle theme"
     >
-      {theme === "system" ? (
-        systemTheme === "dark" ? (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-            />
-          </svg>
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-            />
-          </svg>
-        )
-      ) : theme === "dark" ? (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-          />
-        </svg>
-      ) : (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-          />
-        </svg>
-      )}
+      <Icon className="h-5 w-5" />
     </button>
   );
 }
@@ -98,13 +50,15 @@ function PendingApprovalBadge({ count }: { count: number }) {
 
   return (
     <span
-      className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-semibold leading-none text-white dark:bg-red-500"
+      className="ml-auto inline-flex h-5 min-w-5 animate-scale-in items-center justify-center rounded-full bg-danger-600 px-1.5 text-xs font-semibold leading-none text-white dark:bg-danger-500"
       title={`${count} transaction${count === 1 ? "" : "s"} awaiting your approval`}
     >
       {count > 99 ? "99+" : count}
     </span>
   );
 }
+
+type NavItem = { to: string; label: string; icon: LucideIcon };
 
 export function AppLayout({ children }: PropsWithChildren) {
   const { isAuthenticated, logout, user } = useAuth();
@@ -173,90 +127,135 @@ export function AppLayout({ children }: PropsWithChildren) {
     navigate("/login");
   }
 
+  const navItems: NavItem[] = [{ to: "/pending-approvals", label: "Pending Approvals", icon: BellRing }];
+  if (user?.role !== "admin") {
+    navItems.push({ to: "/transactions", label: "Transactions", icon: Receipt });
+  } else {
+    navItems.push({ to: "/admin/users", label: "Users", icon: Users });
+    navItems.push({ to: "/admin/transactions", label: "Transactions", icon: Receipt });
+    navItems.push({ to: "/admin/activity", label: "Activity", icon: ScrollText });
+  }
+
+  function renderNavLinks(onNavigate?: () => void) {
+    return navItems.map((item) => (
+      <NavLink key={item.to} to={item.to} className={({ isActive }) => navLinkClasses(isActive)} onClick={onNavigate}>
+        <item.icon className="h-4 w-4" />
+        {item.label}
+        {item.to === "/pending-approvals" ? <PendingApprovalBadge count={pendingApprovalCount} /> : null}
+      </NavLink>
+    ));
+  }
+
+  const initial = user?.full_name?.charAt(0).toUpperCase() ?? user?.email.charAt(0).toUpperCase() ?? "?";
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <nav className="mx-auto flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div className="flex w-full items-center justify-between gap-3 sm:w-auto">
-            <NavLink to="/" className="flex items-center justify-center gap-2 text-lg font-semibold">
-              <img
-                src={smallLogo}
-                alt="ExpenseMate Logo"
-                className="block h-8 sm:hidden"
-              />
-              <img
-                src={fullLogo}
-                alt="ExpenseMate Full Logo"
-                className="hidden h-8 sm:block"
-              />
-            </NavLink>
-            <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-[#10161De6]">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <NavLink to="/" className="flex items-center gap-2 transition-opacity duration-150 hover:opacity-80">
+            <img src={smallLogo} alt="ExpenseMate Logo" className="block h-7 sm:hidden" />
+            <img src={fullLogo} alt="ExpenseMate" className="hidden h-7 sm:block" />
+          </NavLink>
+
+          {isAuthenticated ? (
+            <>
+              <nav className="hidden items-center gap-1 sm:flex">{renderNavLinks()}</nav>
+
+              <div className="hidden items-center gap-2 sm:flex">
+                <ThemeToggleButton theme={theme} systemTheme={systemTheme} handleToggleTheme={handleToggleTheme} />
+                <DropdownMenu
+                  trigger={
+                    <span className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-slate-700 transition-colors duration-150 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-600/15 text-xs font-semibold text-primary-700 dark:bg-primary-400/15 dark:text-primary-400">
+                        {initial}
+                      </span>
+                      {user?.full_name ?? user?.email}
+                    </span>
+                  }
+                >
+                  <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-800">
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-50">
+                      {user?.full_name ?? "Account"}
+                    </p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user?.email}</p>
+                  </div>
+                  <NavLink
+                    to="/change-password"
+                    className="mt-1 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-700 transition-colors duration-150 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    Change Password
+                  </NavLink>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-danger-600 transition-colors duration-150 hover:bg-danger-50 dark:text-danger-400 dark:hover:bg-danger-950/40"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </DropdownMenu>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setShowMenu((current) => !current)}
-                className="relative inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:hidden"
+                aria-label={showMenu ? "Close menu" : "Open menu"}
+                className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors duration-150 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:hidden"
               >
-                Menu
-                <span aria-hidden="true">{showMenu ? "✕" : "☰"}</span>
+                {showMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                 {!showMenu && pendingApprovalCount > 0 ? (
                   <span
                     aria-hidden="true"
-                    className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-600 ring-2 ring-white dark:bg-red-500 dark:ring-slate-900"
+                    className="absolute right-1 top-1 h-2 w-2 rounded-full bg-danger-600 ring-2 ring-white dark:bg-danger-500 dark:ring-slate-950"
                   />
                 ) : null}
               </button>
-            </div>
-          </div>
+            </>
+          ) : (
+            <NavLink
+              to="/login"
+              className="text-sm font-medium text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white"
+            >
+              Login
+            </NavLink>
+          )}
+        </div>
 
-          <div className={`w-full flex-col gap-3 ${showMenu ? "flex" : "hidden"} sm:flex sm:w-auto sm:flex-row sm:items-center`}>
-            {isAuthenticated ? (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-
+        {isAuthenticated ? (
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows] duration-200 ease-emphasized sm:hidden",
+              showMenu ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            )}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <nav className="flex flex-col gap-1 px-4 pb-3">
+                {renderNavLinks(() => setShowMenu(false))}
                 <NavLink
-                  to="/pending-approvals"
-                  className={`${navLinkClasses} inline-flex items-center`}
+                  to="/change-password"
+                  className={({ isActive }) => navLinkClasses(isActive)}
                   onClick={() => setShowMenu(false)}
                 >
-                  Pending Approvals
-                  <PendingApprovalBadge count={pendingApprovalCount} />
-                </NavLink>
-                {user?.role !== "admin" ? (
-                  <NavLink to="/transactions" className={navLinkClasses} onClick={() => setShowMenu(false)}>
-                    Transactions
-                  </NavLink>
-                ) : null}
-                {user?.role === "admin" ? (
-                  <>
-                    <NavLink to="/admin/users" className={navLinkClasses} onClick={() => setShowMenu(false)}>
-                      Users
-                    </NavLink>
-                    <NavLink to="/admin/transactions" className={navLinkClasses} onClick={() => setShowMenu(false)}>
-                      Transactions
-                    </NavLink>
-                    <NavLink to="/admin/activity" className={navLinkClasses} onClick={() => setShowMenu(false)}>
-                      Activity
-                    </NavLink>
-                  </>
-                ) : null}
-                <NavLink to="/change-password" className={navLinkClasses} onClick={() => setShowMenu(false)}>
+                  <KeyRound className="h-4 w-4" />
                   Change Password
                 </NavLink>
-                <ThemeToggleButton theme={theme} systemTheme={systemTheme} handleToggleTheme={handleToggleTheme} />
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Theme</span>
+                  <ThemeToggleButton theme={theme} systemTheme={systemTheme} handleToggleTheme={handleToggleTheme} />
+                </div>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-danger-600 transition-colors duration-150 hover:bg-danger-50 dark:text-danger-400 dark:hover:bg-danger-950/40"
                 >
+                  <LogOut className="h-4 w-4" />
                   Logout
                 </button>
-              </div>
-            ) : (
-              <NavLink to="/login" className="text-sm font-medium text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white" onClick={() => setShowMenu(false)}>
-                Login
-              </NavLink>
-            )}
+              </nav>
+            </div>
           </div>
-        </nav>
+        ) : null}
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
     </div>
